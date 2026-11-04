@@ -36,7 +36,24 @@
 
 ### S04: As an organizer, I want to publish and unpublish an event, so that I control when it goes public
 
-*Written by you, in pairs, during the Build 2 class. Add your three criteria here before you paste the AI prompt below.*
+- Given an organizer has created an event titled "Lagos Tech Meetup" with all required information
+| **When** the organizer clicks the "Publish" button
+| **Then** the event status changes to "Published". And the event is added to the attendee's published events listing.
+- **Given** an event titled "Lagos Tech Meetup" has a "Published" status
+| **When** the organizer clicks the "Unpublish" button
+| **Then** the event status changes to "Unpublished". And the event is removed from the attendee's published events listing.
+- **Given** an organizer has created an event with missing required  information
+| **When** the organizer attempts to publish the event
+| **Then** the system prevents the event from being published. And displays an error message identifying the missing required information.
+- **Given** an organizer has completed all required event details
+| **When** the organizer successfully publishes the event
+| **Then** the system displays a confirmation message stating that the event has been published successfully.
+- **Given** an organizer has a published event
+| **When** the organizer successfully unpublishes the event
+| **Then** the system displays a confirmation message stating that the event has been unpublished successfully.
+- **Given** a user is not the organizer or an authorized user for an event
+| **When** the user attempts to publish or unpublish the event
+| **Then** the system denies the action. And displays an appropriate   authorization error message.
 
 ### S05: As an attendee, I want to search, filter and sort published events, so that I can find one I like
 
