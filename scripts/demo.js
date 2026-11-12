@@ -10,7 +10,12 @@ import {
 import { DomainError } from "../src/domain/errors.js";
 
 const store = createStore();
-const event = createEvent(store, { name: "Community Music Night" });
+const event = createEvent(store, {
+  title: "Community Music Night",
+  city: "Lagos",
+  venue: "Community Hall",
+  date: "2026-12-05",
+});
 const tier = addTier(store, event.id, {
   name: "General admission",
   priceCents: 2500,

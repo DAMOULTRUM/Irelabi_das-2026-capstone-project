@@ -25,6 +25,26 @@ function requireInteger(value, label, minimum) {
   }
 }
 
+function requireIsoDate(value, label) {
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/.test(value)
+  ) {
+    fail(`${label} must be a valid ISO date.`);
+  }
+
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day ||
+    !Number.isFinite(Date.parse(value))
+  ) {
+    fail(`${label} must be a valid ISO date.`);
+  }
+}
+
 function getEvent(store, eventId) {
   const event = store.events.get(eventId);
   if (!event) fail(`Event "${eventId}" was not found.`, "NOT_FOUND");
@@ -51,15 +71,73 @@ export function createEvent(store, details) {
   requireRecord(details, "Event details");
   if (!(store.events instanceof Map)) fail("Store is invalid.");
 
-  const name = requireText(details.name, "Event name");
+  const title = requireText(details.title ?? details.name, "Event title");
+  const city = requireText(details.city, "Event city");
+  const venue = requireText(details.venue, "Event venue");
+  requireIsoDate(details.date, "Event date");
   const event = {
     id: newId(),
-    name,
+    title,
+    name: title,
+    city,
+    venue,
+    date: details.date,
+    status: "draft",
     tiers: new Map(),
   };
 
   store.events.set(event.id, event);
   return event;
+}
+
+function requireEventDetails(event) {
+  requireText(event.title, "Event title");
+  requireText(event.city, "Event city");
+  requireText(event.venue, "Event venue");
+  requireIsoDate(event.date, "Event date");
+}
+
+export function publishEvent(store, eventId) {
+  requireRecord(store, "Store");
+  if (!(store.events instanceof Map)) fail("Store is invalid.");
+
+  const event = getEvent(store, eventId);
+  requireEventDetails(event);
+  if (!(event.tiers instanceof Map) || event.tiers.size === 0) {
+    fail("An event must have at least one ticket tier before it can be published.", "INVALID_STATE");
+  }
+
+  event.status = "published";
+  return event;
+}
+
+export function unpublishEvent(store, eventId) {
+  requireRecord(store, "Store");
+  if (!(store.events instanceof Map)) fail("Store is invalid.");
+
+  const event = getEvent(store, eventId);
+  event.status = "unpublished";
+  return event;
+}
+
+export function listEventSummaries(store, { publishedOnly = true } = {}) {
+  requireRecord(store, "Store");
+  if (!(store.events instanceof Map)) fail("Store is invalid.");
+
+  const summaries = [];
+  for (const event of store.events.values()) {
+    if (publishedOnly && event.status !== "published") continue;
+    summaries.push({
+      id: event.id,
+      title: event.title,
+      city: event.city,
+      venue: event.venue,
+      date: event.date,
+      status: event.status,
+      tiers: [...event.tiers.values()].map((tier) => ({ ...tier })),
+    });
+  }
+  return summaries;
 }
 
 export function addTier(store, eventId, details) {
@@ -78,6 +156,7 @@ export function addTier(store, eventId, details) {
     name,
     priceCents: details.priceCents,
     capacity: details.capacity,
+    sold: 0,
     available: details.capacity,
   };
 
@@ -119,7 +198,7 @@ export function bookTickets(store, details) {
     attendeeName,
     quantity: details.quantity,
     totalCents: tier.priceCents * details.quantity,
-    status: "confirmed",
+    status: "pending",
   };
 
   if (!Number.isSafeInteger(booking.totalCents)) {
@@ -127,6 +206,7 @@ export function bookTickets(store, details) {
   }
 
   tier.available -= details.quantity;
+  tier.sold += details.quantity;
   store.bookings.set(booking.id, booking);
   store.bookingsByReference.set(booking.reference, booking);
   return booking;
@@ -145,7 +225,7 @@ export function cancelBooking(store, bookingId) {
 
   const booking = store.bookings.get(bookingId);
   if (!booking) fail(`Booking "${bookingId}" was not found.`, "NOT_FOUND");
-  if (booking.status !== "confirmed") {
+  if (booking.status !== "pending" && booking.status !== "confirmed") {
     fail("This booking has already been cancelled.", "ALREADY_CANCELLED");
   }
 
@@ -153,6 +233,7 @@ export function cancelBooking(store, bookingId) {
   const tier = getTier(event, booking.tierId);
   booking.status = "cancelled";
   tier.available += booking.quantity;
+  tier.sold -= booking.quantity;
   return booking;
 }
 

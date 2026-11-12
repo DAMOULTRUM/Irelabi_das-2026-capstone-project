@@ -9,7 +9,7 @@
 **Done when**
 - `npm run demo` prints the whole story: an event sells out, a booking is refused, people join the waitlist, a booking is cancelled, and the next person in line is named.
 - `npm run benchmark` shows a `Map` lookup far faster than `Array.find`, and you can explain why in Big O terms.
-- Your first pull request is merged.
+- Your first pull request is merged. 
 
 ## User stories in this build
 
